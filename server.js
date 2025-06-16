@@ -22,28 +22,42 @@ webpush.setVapidDetails(
 
 let subscription;
 
+// Log para debug
+function logDebug(message, data = null) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${message}`);
+  if (data) {
+    console.log(JSON.stringify(data, null, 2));
+  }
+}
+
 app.get("/api/vapid-public-key", (req, res) => {
+  logDebug("Chave VAPID pública solicitada");
   res.send(vapidKeys.publicKey);
 });
 
 app.post("/api/subscribe", (req, res) => {
   subscription = req.body;
-  res.status(201).json({});
+  logDebug("Nova subscrição recebida:", subscription);
+  res.status(201).json({ message: "Subscrição registrada com sucesso" });
 });
 
 // Webhook para receber notificações do gateway
 app.post("/webhook", async (req, res) => {
   try {
+    logDebug("Webhook recebido:", req.body);
+
     const data = req.body;
 
     // Verifica se há uma subscrição ativa
     if (!subscription) {
+      logDebug("Erro: Nenhuma subscrição encontrada");
       return res.status(400).json({ error: "Nenhuma subscrição encontrada" });
     }
 
     // Verifica se o status é "completed"
     if (data.status !== "completed") {
-      console.log(`Pedido em status: ${data.status}`);
+      logDebug(`Pedido ignorado - Status: ${data.status}`);
       return res.status(200).send(`Ignorado: status é '${data.status}'`);
     }
 
@@ -57,11 +71,12 @@ app.post("/webhook", async (req, res) => {
       }`,
     });
 
+    logDebug("Enviando notificação:", { payload });
     await webpush.sendNotification(subscription, payload);
-    console.log("Notificação enviada:", payload);
+    logDebug("Notificação enviada com sucesso");
     res.status(200).send("OK");
   } catch (err) {
-    console.error("Erro:", err);
+    logDebug("Erro no webhook:", err);
     res.status(500).send("Erro interno");
   }
 });
@@ -69,6 +84,7 @@ app.post("/webhook", async (req, res) => {
 // Rota para enviar notificação manualmente (para testes)
 app.get("/api/send-notification", (req, res) => {
   if (!subscription) {
+    logDebug("Erro: Tentativa de envio manual sem subscrição");
     return res.status(400).json({ error: "Nenhuma subscrição encontrada" });
   }
 
@@ -77,18 +93,20 @@ app.get("/api/send-notification", (req, res) => {
     body: "Notificação manual enviada com sucesso!",
   });
 
+  logDebug("Enviando notificação manual:", { payload });
   webpush
     .sendNotification(subscription, payload)
     .then(() => {
+      logDebug("Notificação manual enviada com sucesso");
       res.json({ success: true });
     })
     .catch((error) => {
-      console.error(error);
+      logDebug("Erro ao enviar notificação manual:", error);
       res.status(500).json({ error: "Erro ao enviar notificação" });
     });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  logDebug(`Servidor rodando na porta ${PORT}`);
 });
