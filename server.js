@@ -79,37 +79,31 @@ app.post("/webhook", async (req, res) => {
 
     const comissao = (data.result / 100).toFixed(2).replace(".", ",");
 
-    // Define o título e emoji baseado no status
-    let titulo = "Nova Venda";
-    let emoji = "🔄";
-
+    // Só enviar notificação se a venda for aprovada
     if (data.status === "completed") {
-      titulo = "Venda Aprovada";
-      emoji = "🔥";
-    } else if (data.status === "pending") {
-      titulo = "Venda Pendente";
-      emoji = "⏳";
-    }
+      const payload = JSON.stringify({
+        title: `Venda Aprovada 🔥`,
+        body: `Sua comissão » R$ ${comissao}`,
+      });
 
-    const payload = JSON.stringify({
-      title: `${titulo} ${emoji}`,
-      body: `Sua comissão » R$ ${comissao}`,
-    });
+      logDebug("Tentando enviar notificação com payload:", payload);
 
-    logDebug("Tentando enviar notificação com payload:", payload);
-
-    try {
-      await webpush.sendNotification(subscription, payload);
-      logDebug("Notificação enviada com sucesso");
-      res.status(200).send("OK");
-    } catch (pushError) {
-      logDebug("Erro ao enviar push:", pushError);
-      // Se a subscrição estiver inválida, vamos limpá-la
-      if (pushError.statusCode === 410) {
-        logDebug("Subscrição expirada ou inválida, limpando...");
-        subscription = null;
+      try {
+        await webpush.sendNotification(subscription, payload);
+        logDebug("Notificação enviada com sucesso");
+        res.status(200).send("OK");
+      } catch (pushError) {
+        logDebug("Erro ao enviar push:", pushError);
+        // Se a subscrição estiver inválida, vamos limpá-la
+        if (pushError.statusCode === 410) {
+          logDebug("Subscrição expirada ou inválida, limpando...");
+          subscription = null;
+        }
+        throw pushError;
       }
-      throw pushError;
+    } else {
+      // Se não for aprovada, apenas retorna OK sem enviar notificação
+      res.status(200).send("OK");
     }
   } catch (err) {
     logDebug("Erro no webhook:", err);
