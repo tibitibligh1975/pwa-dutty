@@ -25,11 +25,20 @@
         border: none;
         border-radius: 5px;
       }
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
       #messages {
         margin-top: 20px;
         padding: 10px;
         border: 1px solid #ccc;
         min-height: 100px;
+      }
+      .compatibility-note {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #666;
       }
     </style>
   </head>
@@ -37,7 +46,17 @@
     <h1>PWA Notification Test</h1>
     <button id="subscribe">Ativar Notificações</button>
     <div id="messages">
-      <p>Status das notificações aparecerá aqui</p>
+      <p>Verificando compatibilidade do dispositivo...</p>
+    </div>
+    <div class="compatibility-note">
+      <p>⚠️ Notificações Push são suportadas em:</p>
+      <ul style="list-style: none; padding: 0">
+        <li>✅ Chrome (Desktop e Android)</li>
+        <li>✅ Firefox (Desktop e Android)</li>
+        <li>✅ Edge (Desktop)</li>
+        <li>❌ Safari iOS (iPhone/iPad)</li>
+        <li>❌ Safari macOS (requer configuração especial)</li>
+      </ul>
     </div>
 
     <script src="/app.js"></script>

@@ -5,17 +5,37 @@ function updateSubscriptionStatus(status) {
   messagesElement.innerHTML = `<p>${status}</p>`;
 }
 
+async function checkNotificationSupport() {
+  // Verifica se o navegador suporta service workers
+  if (!("serviceWorker" in navigator)) {
+    throw new Error("Service Workers não são suportados neste navegador");
+  }
+
+  // Verifica se o navegador suporta notificações push
+  if (!("PushManager" in window)) {
+    throw new Error("Notificações Push não são suportadas neste navegador");
+  }
+
+  // No iOS, precisamos verificar se window.Notification existe
+  if (!("Notification" in window)) {
+    throw new Error("Notificações não são suportadas neste dispositivo");
+  }
+}
+
 async function subscribeToPushNotifications() {
   try {
+    // Primeiro, verifica o suporte
+    await checkNotificationSupport();
+
     const registration = await navigator.serviceWorker.ready;
 
     // Solicitar permissão de notificação
-    const permission = await Notification.requestPermission();
+    const permission = await window.Notification.requestPermission();
     if (permission !== "granted") {
       throw new Error("Permissão de notificação negada");
     }
 
-    // Gerar chaves VAPID no servidor (você precisará implementar isso)
+    // Gerar chaves VAPID no servidor
     const response = await fetch("/api/vapid-public-key");
     const vapidPublicKey = await response.text();
     const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
@@ -38,7 +58,14 @@ async function subscribeToPushNotifications() {
     updateSubscriptionStatus("Notificações ativadas com sucesso!");
     subscribeButton.disabled = true;
   } catch (error) {
-    updateSubscriptionStatus(`Erro ao ativar notificações: ${error.message}`);
+    if (error.message.includes("não são suportadas")) {
+      updateSubscriptionStatus(
+        `Este dispositivo não suporta notificações push. Por favor, use um navegador compatível como Chrome ou Firefox em um computador ou dispositivo Android.`
+      );
+    } else {
+      updateSubscriptionStatus(`Erro ao ativar notificações: ${error.message}`);
+    }
+    console.error("Erro detalhado:", error);
   }
 }
 
@@ -57,5 +84,18 @@ function urlBase64ToUint8Array(base64String) {
   }
   return outputArray;
 }
+
+// Verifica o suporte assim que a página carrega
+window.addEventListener("load", async () => {
+  try {
+    await checkNotificationSupport();
+    subscribeButton.disabled = false;
+  } catch (error) {
+    updateSubscriptionStatus(
+      `Este dispositivo não suporta notificações push. Por favor, use um navegador compatível como Chrome ou Firefox em um computador ou dispositivo Android.`
+    );
+    subscribeButton.disabled = true;
+  }
+});
 
 subscribeButton.addEventListener("click", subscribeToPushNotifications);
