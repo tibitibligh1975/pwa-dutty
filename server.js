@@ -43,13 +43,18 @@ app.post("/webhook", async (req, res) => {
 
     // Verifica se o status é "completed"
     if (data.status !== "completed") {
-      return res.status(200).send("Ignorado: status não é 'completed'");
+      console.log(`Pedido em status: ${data.status}`);
+      return res.status(200).send(`Ignorado: status é '${data.status}'`);
     }
 
     const comissao = (data.result / 100).toFixed(2).replace(".", ",");
+    const nomeCliente = data.customer?.name || "Cliente";
+
     const payload = JSON.stringify({
-      title: "Venda Realizada! 🎉",
-      body: `Sua comissão » R$ ${comissao}`,
+      title: "Nova Venda! 🎉",
+      body: `${nomeCliente} - Comissão: R$ ${comissao}\nEmail: ${
+        data.customer?.email || "N/A"
+      }`,
     });
 
     await webpush.sendNotification(subscription, payload);
@@ -68,7 +73,7 @@ app.get("/api/send-notification", (req, res) => {
   }
 
   const payload = JSON.stringify({
-    title: "PWA Test",
+    title: "Checkoutinho",
     body: "Notificação manual enviada com sucesso!",
   });
 

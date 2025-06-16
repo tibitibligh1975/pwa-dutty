@@ -1,6 +1,6 @@
 {
   "name": "PWA Notification Test",
-  "short_name": "PWA Test",
+  "short_name": "Checkoutinho",
   "description": "A simple PWA for testing notifications",
   "start_url": "/",
   "display": "standalone",
