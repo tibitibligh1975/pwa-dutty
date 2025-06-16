@@ -5,28 +5,8 @@ function updateSubscriptionStatus(status) {
   messagesElement.innerHTML = `<p>${status}</p>`;
 }
 
-async function checkNotificationSupport() {
-  // Verifica se o navegador suporta service workers
-  if (!("serviceWorker" in navigator)) {
-    throw new Error("Service Workers não são suportados neste navegador");
-  }
-
-  // Verifica se o navegador suporta notificações push
-  if (!("PushManager" in window)) {
-    throw new Error("Notificações Push não são suportadas neste navegador");
-  }
-
-  // No iOS, precisamos verificar se window.Notification existe
-  if (!("Notification" in window)) {
-    throw new Error("Notificações não são suportadas neste dispositivo");
-  }
-}
-
 async function subscribeToPushNotifications() {
   try {
-    // Primeiro, verifica o suporte
-    await checkNotificationSupport();
-
     const registration = await navigator.serviceWorker.ready;
 
     // Solicitar permissão de notificação
@@ -58,14 +38,7 @@ async function subscribeToPushNotifications() {
     updateSubscriptionStatus("Notificações ativadas com sucesso!");
     subscribeButton.disabled = true;
   } catch (error) {
-    if (error.message.includes("não são suportadas")) {
-      updateSubscriptionStatus(
-        `Este dispositivo não suporta notificações push. Por favor, use um navegador compatível como Chrome ou Firefox em um computador ou dispositivo Android.`
-      );
-    } else {
-      updateSubscriptionStatus(`Erro ao ativar notificações: ${error.message}`);
-    }
-    console.error("Erro detalhado:", error);
+    updateSubscriptionStatus(`Erro ao ativar notificações: ${error.message}`);
   }
 }
 
@@ -85,17 +58,18 @@ function urlBase64ToUint8Array(base64String) {
   return outputArray;
 }
 
-// Verifica o suporte assim que a página carrega
-window.addEventListener("load", async () => {
-  try {
-    await checkNotificationSupport();
-    subscribeButton.disabled = false;
-  } catch (error) {
-    updateSubscriptionStatus(
-      `Este dispositivo não suporta notificações push. Por favor, use um navegador compatível como Chrome ou Firefox em um computador ou dispositivo Android.`
-    );
-    subscribeButton.disabled = true;
-  }
-});
+// Registra o service worker e ativa o botão
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker
+    .register("/sw.js")
+    .then(() => {
+      subscribeButton.disabled = false;
+    })
+    .catch((error) => {
+      updateSubscriptionStatus(
+        `Erro ao registrar service worker: ${error.message}`
+      );
+    });
+}
 
 subscribeButton.addEventListener("click", subscribeToPushNotifications);
