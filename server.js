@@ -77,20 +77,23 @@ app.post("/webhook", async (req, res) => {
 
     logDebug("Subscrição atual:", subscription);
 
-    // Verifica se o status é "completed"
-    if (data.status !== "completed") {
-      logDebug(`Pedido ignorado - Status: ${data.status}`);
-      return res.status(200).send(`Ignorado: status é '${data.status}'`);
+    const comissao = (data.result / 100).toFixed(2).replace(".", ",");
+
+    // Define o título e emoji baseado no status
+    let titulo = "Nova Venda";
+    let emoji = "🔄";
+
+    if (data.status === "completed") {
+      titulo = "Venda Aprovada";
+      emoji = "🔥";
+    } else if (data.status === "pending") {
+      titulo = "Venda Pendente";
+      emoji = "⏳";
     }
 
-    const comissao = (data.result / 100).toFixed(2).replace(".", ",");
-    const nomeCliente = data.customer?.name || "Cliente";
-
     const payload = JSON.stringify({
-      title: "Nova Venda! 🎉",
-      body: `${nomeCliente} - Comissão: R$ ${comissao}\nEmail: ${
-        data.customer?.email || "N/A"
-      }`,
+      title: `${titulo} ${emoji}`,
+      body: `Sua comissão » R$ ${comissao}`,
     });
 
     logDebug("Tentando enviar notificação com payload:", payload);
