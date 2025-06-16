@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PWA Test</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <meta name="theme-color" content="#2196F3" />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        margin: 10px;
+        cursor: pointer;
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 5px;
+      }
+      #messages {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        min-height: 100px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PWA Notification Test</h1>
+    <button id="subscribe">Ativar Notificações</button>
+    <div id="messages">
+      <p>Status das notificações aparecerá aqui</p>
+    </div>
+
+    <script src="/app.js"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              console.log(
+                "ServiceWorker registrado com sucesso:",
+                registration
+              );
+            })
+            .catch((error) => {
+              console.log("Erro ao registrar ServiceWorker:", error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
