@@ -29,16 +29,36 @@ app.get("/api/vapid-public-key", (req, res) => {
 app.post("/api/subscribe", (req, res) => {
   subscription = req.body;
   res.status(201).json({});
+});
 
-  // Enviar uma notificação de teste
-  const payload = JSON.stringify({
-    title: "PWA Test",
-    body: "Notificação de teste enviada com sucesso!",
-  });
+// Webhook para receber notificações do gateway
+app.post("/webhook", async (req, res) => {
+  try {
+    const data = req.body;
 
-  webpush
-    .sendNotification(subscription, payload)
-    .catch((error) => console.error(error));
+    // Verifica se há uma subscrição ativa
+    if (!subscription) {
+      return res.status(400).json({ error: "Nenhuma subscrição encontrada" });
+    }
+
+    // Verifica se o status é "completed"
+    if (data.status !== "completed") {
+      return res.status(200).send("Ignorado: status não é 'completed'");
+    }
+
+    const comissao = (data.result / 100).toFixed(2).replace(".", ",");
+    const payload = JSON.stringify({
+      title: "Venda Realizada! 🎉",
+      body: `Sua comissão » R$ ${comissao}`,
+    });
+
+    await webpush.sendNotification(subscription, payload);
+    console.log("Notificação enviada:", payload);
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("Erro:", err);
+    res.status(500).send("Erro interno");
+  }
 });
 
 // Rota para enviar notificação manualmente (para testes)

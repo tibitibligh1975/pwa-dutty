@@ -23,8 +23,9 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  const data = event.data.json();
   const options = {
-    body: event.data.text(),
+    body: data.body,
     icon: "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
     vibrate: [100, 50, 100],
@@ -34,5 +35,5 @@ self.addEventListener("push", (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification("PWA Test", options));
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
