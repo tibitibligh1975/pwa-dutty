@@ -9,8 +9,12 @@ const urlsToCache = [
 ];
 
 self.addEventListener("install", (event) => {
+  console.log("[ServiceWorker] Instalando");
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log("[ServiceWorker] Cache aberto");
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
@@ -23,9 +27,12 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  const data = event.data.json();
-  const options = {
-    body: data.body,
+  console.log("[ServiceWorker] Push recebido");
+  console.log("[ServiceWorker] Dados Push:", event.data?.text());
+
+  let notificationData = {
+    title: "Nova Notificação",
+    body: "Sem conteúdo",
     icon: "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
     vibrate: [100, 50, 100],
@@ -35,5 +42,42 @@ self.addEventListener("push", (event) => {
     },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  try {
+    const payload = event.data.json();
+    notificationData = {
+      ...notificationData,
+      ...payload,
+    };
+    console.log("[ServiceWorker] Dados da notificação:", notificationData);
+  } catch (e) {
+    console.error("[ServiceWorker] Erro ao processar payload:", e);
+    notificationData.body = event.data.text();
+  }
+
+  event.waitUntil(
+    self.registration
+      .showNotification(notificationData.title, notificationData)
+      .then(() => {
+        console.log("[ServiceWorker] Notificação mostrada com sucesso");
+      })
+      .catch((error) => {
+        console.error("[ServiceWorker] Erro ao mostrar notificação:", error);
+      })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  console.log("[ServiceWorker] Notificação clicada");
+  event.notification.close();
+
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        if (clientList.length > 0) {
+          return clientList[0].focus();
+        }
+        return clients.openWindow("/");
+      })
+  );
 });

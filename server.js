@@ -39,7 +39,27 @@ app.get("/api/vapid-public-key", (req, res) => {
 app.post("/api/subscribe", (req, res) => {
   subscription = req.body;
   logDebug("Nova subscrição recebida:", subscription);
-  res.status(201).json({ message: "Subscrição registrada com sucesso" });
+
+  // Teste imediato da subscrição
+  const testPayload = JSON.stringify({
+    title: "Teste de Conexão",
+    body: "Sua conexão para notificações está funcionando!",
+  });
+
+  webpush
+    .sendNotification(subscription, testPayload)
+    .then(() => {
+      logDebug("Notificação de teste enviada com sucesso");
+      res
+        .status(201)
+        .json({ message: "Subscrição registrada e testada com sucesso" });
+    })
+    .catch((error) => {
+      logDebug("Erro ao enviar notificação de teste:", error);
+      res
+        .status(201)
+        .json({ message: "Subscrição registrada, mas teste falhou" });
+    });
 });
 
 // Webhook para receber notificações do gateway
@@ -54,6 +74,8 @@ app.post("/webhook", async (req, res) => {
       logDebug("Erro: Nenhuma subscrição encontrada");
       return res.status(400).json({ error: "Nenhuma subscrição encontrada" });
     }
+
+    logDebug("Subscrição atual:", subscription);
 
     // Verifica se o status é "completed"
     if (data.status !== "completed") {
@@ -71,10 +93,21 @@ app.post("/webhook", async (req, res) => {
       }`,
     });
 
-    logDebug("Enviando notificação:", { payload });
-    await webpush.sendNotification(subscription, payload);
-    logDebug("Notificação enviada com sucesso");
-    res.status(200).send("OK");
+    logDebug("Tentando enviar notificação com payload:", payload);
+
+    try {
+      await webpush.sendNotification(subscription, payload);
+      logDebug("Notificação enviada com sucesso");
+      res.status(200).send("OK");
+    } catch (pushError) {
+      logDebug("Erro ao enviar push:", pushError);
+      // Se a subscrição estiver inválida, vamos limpá-la
+      if (pushError.statusCode === 410) {
+        logDebug("Subscrição expirada ou inválida, limpando...");
+        subscription = null;
+      }
+      throw pushError;
+    }
   } catch (err) {
     logDebug("Erro no webhook:", err);
     res.status(500).send("Erro interno");
