@@ -40,6 +40,8 @@ self.addEventListener("push", (event) => {
       dateOfArrival: Date.now(),
       primaryKey: 1,
     },
+    requireInteraction: true,
+    tag: "checkoutinho-notification",
   };
 
   try {
@@ -49,6 +51,13 @@ self.addEventListener("push", (event) => {
       ...payload,
     };
     console.log("[ServiceWorker] Dados da notificação:", notificationData);
+
+    if (payload.silent) {
+      console.log(
+        "[ServiceWorker] Notificação silenciosa recebida - não será exibida"
+      );
+      return;
+    }
   } catch (e) {
     console.error("[ServiceWorker] Erro ao processar payload:", e);
     notificationData.body = event.data.text();
@@ -74,10 +83,31 @@ self.addEventListener("notificationclick", (event) => {
     clients
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clientList) => {
-        if (clientList.length > 0) {
-          return clientList[0].focus();
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            return client.focus();
+          }
         }
-        return clients.openWindow("/");
+        if (clients.openWindow) {
+          return clients.openWindow("/");
+        }
       })
+  );
+});
+
+self.addEventListener("activate", (event) => {
+  console.log("[ServiceWorker] Ativado");
+
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log("[ServiceWorker] Removendo cache antigo:", cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
   );
 });

@@ -1,8 +1,79 @@
 const messagesElement = document.getElementById("messages");
 const subscribeButton = document.getElementById("subscribe");
 
+let isSubscribed = false;
+
 function updateSubscriptionStatus(status) {
   messagesElement.innerHTML = `<p>${status}</p>`;
+}
+
+// Verificar se já existe uma subscrição ativa
+async function checkExistingSubscription() {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      // Verificar se a subscrição ainda é válida no servidor
+      const response = await fetch("/api/subscription-status");
+      const status = await response.json();
+
+      if (status.hasSubscriptions) {
+        isSubscribed = true;
+        subscribeButton.disabled = true;
+        updateSubscriptionStatus("Notificações já estão ativas!");
+        return true;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.error("Erro ao verificar subscrição existente:", error);
+    return false;
+  }
+}
+
+// Verificar periodicamente se a subscrição ainda está ativa
+async function checkSubscriptionHealth() {
+  if (!isSubscribed) return;
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      console.log("Subscrição local perdida, tentando re-subscrever...");
+      isSubscribed = false;
+      subscribeButton.disabled = false;
+      updateSubscriptionStatus(
+        "Subscrição perdida. Clique para reativar as notificações."
+      );
+      return;
+    }
+
+    // Verificar no servidor se ainda temos subscrições ativas
+    const response = await fetch("/api/subscription-status");
+    const status = await response.json();
+
+    if (!status.hasSubscriptions) {
+      console.log("Nenhuma subscrição ativa no servidor, re-subscrevendo...");
+      await resubscribe();
+    }
+  } catch (error) {
+    console.error("Erro na verificação de saúde da subscrição:", error);
+  }
+}
+
+// Re-subscrever automaticamente
+async function resubscribe() {
+  try {
+    updateSubscriptionStatus("Reativando notificações...");
+    await subscribeToPushNotifications();
+  } catch (error) {
+    console.error("Erro ao re-subscrever:", error);
+    isSubscribed = false;
+    subscribeButton.disabled = false;
+    updateSubscriptionStatus("Erro ao reativar notificações. Tente novamente.");
+  }
 }
 
 async function subscribeToPushNotifications() {
@@ -27,7 +98,7 @@ async function subscribeToPushNotifications() {
     });
 
     // Enviar subscrição para o servidor
-    await fetch("/api/subscribe", {
+    const subscribeResponse = await fetch("/api/subscribe", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -35,9 +106,15 @@ async function subscribeToPushNotifications() {
       body: JSON.stringify(subscription),
     });
 
-    updateSubscriptionStatus("Notificações ativadas com sucesso!");
-    subscribeButton.disabled = true;
+    if (subscribeResponse.ok) {
+      isSubscribed = true;
+      updateSubscriptionStatus("Notificações ativadas com sucesso!");
+      subscribeButton.disabled = true;
+    } else {
+      throw new Error("Erro ao registrar subscrição no servidor");
+    }
   } catch (error) {
+    isSubscribed = false;
     updateSubscriptionStatus(`Erro ao ativar notificações: ${error.message}`);
   }
 }
@@ -62,8 +139,19 @@ function urlBase64ToUint8Array(base64String) {
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker
     .register("/sw.js")
-    .then(() => {
-      subscribeButton.disabled = false;
+    .then(async () => {
+      // Verificar se já existe uma subscrição ativa
+      const hasExisting = await checkExistingSubscription();
+
+      if (!hasExisting) {
+        subscribeButton.disabled = false;
+      }
+
+      // Configurar verificação periódica (a cada 30 minutos)
+      setInterval(checkSubscriptionHealth, 30 * 60 * 1000);
+
+      // Verificação inicial após 1 minuto
+      setTimeout(checkSubscriptionHealth, 60 * 1000);
     })
     .catch((error) => {
       updateSubscriptionStatus(
@@ -73,3 +161,11 @@ if ("serviceWorker" in navigator) {
 }
 
 subscribeButton.addEventListener("click", subscribeToPushNotifications);
+
+// Detectar quando a página fica visível novamente (usuário volta para a aba)
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && isSubscribed) {
+    // Verificar saúde da subscrição quando o usuário volta para a página
+    setTimeout(checkSubscriptionHealth, 1000);
+  }
+});
