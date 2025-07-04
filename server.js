@@ -186,12 +186,10 @@ app.post("/webhook", async (req, res) => {
     // Valor fixo de R$97,00
     const comissao = "97,00";
 
-    // Só enviar notificação se a venda for aprovada
-    if (data.status === "completed") {
-      const payload = JSON.stringify({
-        title: `Venda Aprovada`,
-        body: `Pix: R$ ${comissao}`,
-      });
+    const payload = JSON.stringify({
+      title: `Venda Aprovada`,
+      body: `Pix: R$ ${comissao}`,
+    });
 
     logDebug("Tentando enviar notificação com payload:", payload);
 
