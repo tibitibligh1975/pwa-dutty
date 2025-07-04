@@ -1,6 +1,6 @@
 {
   "name": "PWA Notification Test",
-  "short_name": "Duttyion",
+  "short_name": "Duttyon",
   "description": "A simple PWA for testing notifications",
   "start_url": "/",
   "display": "standalone",
