@@ -175,8 +175,6 @@ app.post("/webhook", async (req, res) => {
   try {
     logDebug("Webhook recebido:", req.body);
 
-    const data = req.body;
-
     // Verifica se há subscrições ativas
     if (subscriptions.length === 0) {
       logDebug("Erro: Nenhuma subscrição encontrada");
@@ -185,7 +183,8 @@ app.post("/webhook", async (req, res) => {
 
     logDebug(`Enviando para ${subscriptions.length} subscrições`);
 
-    const comissao = (data.result / 100).toFixed(2).replace(".", ",");
+    // Valor fixo de R$97,00
+    const comissao = "97,00";
 
     // Só enviar notificação se a venda for aprovada
     if (data.status === "completed") {
@@ -194,32 +193,28 @@ app.post("/webhook", async (req, res) => {
         body: `Pix: R$ ${comissao}`,
       });
 
-      logDebug("Tentando enviar notificação com payload:", payload);
+    logDebug("Tentando enviar notificação com payload:", payload);
 
-      // Enviar para todas as subscrições ativas
-      const sendPromises = subscriptions.map(async (subscription) => {
-        try {
-          await webpush.sendNotification(subscription, payload);
-          logDebug("Notificação enviada para:", subscription.endpoint);
-          return { success: true, subscription };
-        } catch (pushError) {
-          logDebug("Erro ao enviar push:", pushError);
-          if (pushError.statusCode === 410) {
-            removeInvalidSubscription(subscription);
-          }
-          return { success: false, subscription, error: pushError };
+    // Enviar para todas as subscrições ativas
+    const sendPromises = subscriptions.map(async (subscription) => {
+      try {
+        await webpush.sendNotification(subscription, payload);
+        logDebug("Notificação enviada para:", subscription.endpoint);
+        return { success: true, subscription };
+      } catch (pushError) {
+        logDebug("Erro ao enviar push:", pushError);
+        if (pushError.statusCode === 410) {
+          removeInvalidSubscription(subscription);
         }
-      });
+        return { success: false, subscription, error: pushError };
+      }
+    });
 
-      const results = await Promise.all(sendPromises);
-      const successful = results.filter((r) => r.success).length;
+    const results = await Promise.all(sendPromises);
+    const successful = results.filter((r) => r.success).length;
 
-      logDebug(`Notificações enviadas: ${successful}/${subscriptions.length}`);
-      res.status(200).send("OK");
-    } else {
-      // Se não for aprovada, apenas retorna OK sem enviar notificação
-      res.status(200).send("OK");
-    }
+    logDebug(`Notificações enviadas: ${successful}/${subscriptions.length}`);
+    res.status(200).send("OK");
   } catch (err) {
     logDebug("Erro no webhook:", err);
     res.status(500).send("Erro interno");
