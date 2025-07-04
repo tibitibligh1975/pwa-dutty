@@ -41,7 +41,7 @@ self.addEventListener("push", (event) => {
       primaryKey: 1,
     },
     requireInteraction: true,
-    tag: "Dutty-notification",
+    tag: "Duttyion-notification",
   };
 
   try {

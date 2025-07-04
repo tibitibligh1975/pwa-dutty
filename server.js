@@ -234,7 +234,7 @@ app.get("/api/send-notification", async (req, res) => {
   }
 
   const payload = JSON.stringify({
-    title: "Dutty",
+    title: "Duttyion",
     body: "Notificação manual enviada com sucesso!",
   });
 
